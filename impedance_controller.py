@@ -104,17 +104,18 @@ class ImpedanceController:
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = 0
+        theta = 0.5
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
                       0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
         Rz = np.array([[np.cos(theta), -np.sin(theta), 0],
                        [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
-        rotate_noi = np.dot(init_rotate, Ry)
+        rotate_noi = np.dot(init_rotate, Rx)
         pose_noi = init_pose[:]
         pose_noi[-3:] = self.RotatMatr2AxisAng(rotate_noi)
         self.robot.movel(pose=pose_noi.tolist(), a=1.2, v=1.0)
+        print(pose_noi)
 
     def correct_bias(self):
         ft = np.array(self.sensor.tare()) / 1000000.0
@@ -164,5 +165,5 @@ if __name__ == "__main__":
     controller = ImpedanceController()
     controller.move2initpose()
     controller.set_pose_noise()
-    controller.correct_bias()
+    # controller.correct_bias()
     # controller.comptest()

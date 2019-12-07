@@ -1,0 +1,44 @@
+2019-12-07 19:44:39,889 - URBasic_robotModelEvent - INFO - Init done
+2019-12-07 19:44:40,390 - URBasic_realTimeClientEvent - INFO - Connected
+2019-12-07 19:44:40,391 - URBasic_realTimeClientEvent - INFO - RT_CLient constructor done
+2019-12-07 19:44:40,392 - URBasic_dataLogEvent - INFO - DataLog constructor done
+2019-12-07 19:44:40,393 - URBasic_rtdeEvent - INFO - RTDE constructor done
+2019-12-07 19:44:40,894 - URBasic_dashboardEvent - INFO - Connected
+2019-12-07 19:44:40,895 - URBasic_dashboardEvent - INFO - UR Dashboard respond Connected: Universal Robots Dashboard Server
+2019-12-07 19:44:40,895 - URBasic_dashboardEvent - INFO - Dashboard server constructor done
+2019-12-07 19:44:40,895 - URBasic_robotConnectorEvent - INFO - Init done
+2019-12-07 19:44:41,208 - URBasic_rtdeEvent - INFO - RTDE started
+2019-12-07 19:44:41,897 - URBasic_urScriptEvent - INFO - Init done
+2019-12-07 19:44:41,911 - URBasic_urScriptExtEvent - INFO - Init done
+2019-12-07 19:44:41,914 - URBasic_realTimeClientEvent - INFO - Program send to Robot:
+def move_l():
+  write_output_boolean_register(0, True)
+    movel( p[-0.1198, -0.464, 0.1927, -0.3193, -3.0929, -0.0024], a=1.2, v=1.0,  r=0)
+
+
+  write_output_boolean_register(1, True)
+end
+
+2019-12-07 19:44:42,015 - URBasic_realTimeClientEvent - INFO - sendProgram: Finished
+2019-12-07 19:44:42,065 - URBasic_realTimeClientEvent - INFO - Program send to Robot:
+def resetRegister():
+  write_output_boolean_register(0, False)
+  write_output_boolean_register(1, False)
+end
+
+2019-12-07 19:44:42,166 - URBasic_realTimeClientEvent - INFO - Program send to Robot:
+def move_l():
+  write_output_boolean_register(0, True)
+    movel( p[-0.1198, -0.464, 0.1927, -0.3192, -3.0929, -0.0025], a=1.2, v=1.0,  r=0)
+
+
+  write_output_boolean_register(1, True)
+end
+
+2019-12-07 19:44:42,267 - URBasic_realTimeClientEvent - INFO - sendProgram: Finished
+2019-12-07 19:44:42,317 - URBasic_realTimeClientEvent - INFO - Program send to Robot:
+def resetRegister():
+  write_output_boolean_register(0, False)
+  write_output_boolean_register(1, False)
+end
+
