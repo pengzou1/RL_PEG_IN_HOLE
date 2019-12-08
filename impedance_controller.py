@@ -23,12 +23,12 @@ class ImpedanceController:
         # print(self.robot.get_actual_tcp_pose()[3:6])
         self.sensor = NetFT.Sensor('192.168.1.30')
         self.M = np.diag((0.008, 0.008, 0.008, 0.008, 0.008, 0.008))
-        self.B = np.diag((80, 80, 800, 6, 6, 6))
+        self.B = np.diag((160, 160, 800, 16, 16, 16))
         self.v = [0, 0, 0, 0, 0, 0]
         self.vd = [0, 0, 0, 0, 0, 0]
         self.Tc = 0.008
         self.MNum = np.linalg.inv(self.M+self.B*self.Tc)
-        self.target_ft = [0, 0, 10, 0, 0, 0]
+        self.target_ft = [0, 0, 15, 0, 0, 0]
         self.target_ft = np.reshape(self.target_ft, (6, 1))
         self.v = np.reshape(self.v, (6, 1))
         self.vd = np.reshape(self.vd, (6, 1))
@@ -96,15 +96,16 @@ class ImpedanceController:
         return ftcomp
 
     def move2initpose(self):
-        x = [-0.1198110622133832, -0.46397222148014655, 0.19269407323156088, -
-             0.31933540461268983, -3.0928885670121358, -0.0023643602329676593]
+        x = [-0.11953694869004786, -0.4636732413647742, 0.19956611419633097,
+             0.34418941658334096, 3.122197481868604, -0.03536070824609871]
+
         self.robot.movel(pose=x, a=1.2, v=1.0)
 
     def set_pose_noise(self):
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = 0.5
+        theta = 4*math.pi/360
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
@@ -114,6 +115,7 @@ class ImpedanceController:
         rotate_noi = np.dot(init_rotate, Rx)
         pose_noi = init_pose[:]
         pose_noi[-3:] = self.RotatMatr2AxisAng(rotate_noi)
+        # pose_noi[0] += 0.001
         self.robot.movel(pose=pose_noi.tolist(), a=1.2, v=1.0)
         print(pose_noi)
 
@@ -123,6 +125,7 @@ class ImpedanceController:
         axisangle = pose[-3:]
         rotate = self.AxisAng2RotaMatri(axisangle)
         self.init_ft = self.gravitycomp(ft, np.linalg.inv(rotate))
+        print(self.init_ft)
 
     def get_ftbase(self):
         ft = np.array(self.sensor.tare()) / 1000000.0
@@ -139,7 +142,24 @@ class ImpedanceController:
 
     def imp_run(self, ft_base):
         err = ft_base-self.target_ft
+        print(err)
+
         self.v = np.dot(self.MNum * self.Tc, err) + np.dot(self.MNum * self.M, self.vd)
+        for i in range(2):
+            if abs(err[i]) < 0.005 or abs(err[i]) > 150:
+                self.v[i] = 0
+        for i in range(3, 6):
+            if abs(err[i]) < 0.001 or abs(err[i]) > 10:
+                self.v[i] = 0
+        for i in range(2):
+            if abs(self.v[i]) < 0.5 or abs(self.v[i]) > 1.5:
+                self.v[i] = 0
+        for i in range(3, 6):
+            if abs(self.v[i]) < 0.1 or abs(self.v[i]) > 1.0:
+                self.v[i] = 0
+        self.v[2] = (err[2]*0.002)/(1+math.exp(abs(ft_base[2])/30))
+        self.v[3:6] = -self.v[3:6]
+        # print(self.v)
         self.vd = self.v
         v_tmp = self.v.tolist()
         v_cmd = [i for item in v_tmp for i in item]
@@ -158,12 +178,20 @@ class ImpedanceController:
         axisangle = pose[-3:]
         rotate = self.AxisAng2RotaMatri(axisangle)
         ftcomp = self. gravitycomp(ft, np.linalg.inv(rotate))-init_ft
-        print(ftcomp)
+        print(init_ft)
 
 
 if __name__ == "__main__":
     controller = ImpedanceController()
     controller.move2initpose()
     controller.set_pose_noise()
-    # controller.correct_bias()
+    controller.correct_bias()
+    initp = controller.robot.get_actual_tcp_pose()
+    z0 = initp[2]
+    while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
+        ft_base = controller.get_ftbase()
+        controller.imp_run(ft_base)
+    controller.robot.stopl()
+    controller.robot.close()
+    print('success')
     # controller.comptest()
