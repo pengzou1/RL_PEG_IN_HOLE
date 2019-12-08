@@ -105,7 +105,7 @@ class ImpedanceController:
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = 4*math.pi/360
+        theta = -10*math.pi/360
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
@@ -142,7 +142,7 @@ class ImpedanceController:
 
     def imp_run(self, ft_base):
         err = ft_base-self.target_ft
-        print(err)
+        # print(err)
 
         self.v = np.dot(self.MNum * self.Tc, err) + np.dot(self.MNum * self.M, self.vd)
         for i in range(2):
@@ -151,6 +151,7 @@ class ImpedanceController:
         for i in range(3, 6):
             if abs(err[i]) < 0.001 or abs(err[i]) > 10:
                 self.v[i] = 0
+        # print(self.v)
         for i in range(2):
             if abs(self.v[i]) < 0.5 or abs(self.v[i]) > 1.5:
                 self.v[i] = 0
@@ -163,8 +164,17 @@ class ImpedanceController:
         self.vd = self.v
         v_tmp = self.v.tolist()
         v_cmd = [i for item in v_tmp for i in item]
-        print(v_cmd)
+        # print(v_cmd)
         self.robot.speedl(xd=v_cmd, wait=False, a=1.0)
+        ft_tmp = ft_base.tolist()
+        ft_record = [i for item in ft_tmp for i in item]
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_ft1.csv', ft_record)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_v1.csv', v_cmd)
+
+    def save2csv(self, filepath, data):
+        with open(filepath, 'a', newline='') as t:
+            writer1 = csv.writer(t)
+            writer1.writerow(data)
 
     def comptest(self):
         # init_ft = np.array(self.sensor.tare()) / 1000000.0
@@ -188,10 +198,12 @@ if __name__ == "__main__":
     controller.correct_bias()
     initp = controller.robot.get_actual_tcp_pose()
     z0 = initp[2]
+    # time.sleep(2.0)
     while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
         ft_base = controller.get_ftbase()
         controller.imp_run(ft_base)
     controller.robot.stopl()
     controller.robot.close()
     print('success')
+
     # controller.comptest()
