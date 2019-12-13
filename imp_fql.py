@@ -24,6 +24,7 @@ reward_list = []
 model = FQL.Model(gamma=0.7, alpha=0.5, ee_rate=0.001, past_weight=0.9, q_initial_value='zero',
                   action_set_length=3, fis=fis)
 controller = ImpedanceController()
+step_max = 60
 for episodes in range(0, 1000):
     # if iteration % 1000 == 0 and iteration <= 20000:
     #     env.__init__()
@@ -35,7 +36,9 @@ for episodes in range(0, 1000):
     controller.move2initpose()
     controller.set_pose_noise()
     controller.correct_bias()
+    step = 0
     while (controller.z < 0.036):
+        step += 1
         ft_base = controller.get_ftbase()
         controller.imp_run(ft_base)
         state_value, reward = controller.get_state_reward('rx')
