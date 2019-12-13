@@ -17,26 +17,26 @@ zero = np.zeros((3, 3), dtype=float)
 
 
 class ImpedanceController:
+    robot = URBasic.urScriptExt.UrScriptExt(
+        host='192.168.1.50', robotModel=URBasic.robotModel.RobotModel())
+    # print(self.robot.get_actual_tcp_pose()[3:6])
+    sensor = NetFT.Sensor('192.168.1.30')
     def __init__(self):
-        self.robot = URBasic.urScriptExt.UrScriptExt(
-            host='192.168.1.50', robotModel=URBasic.robotModel.RobotModel())
-        # print(self.robot.get_actual_tcp_pose()[3:6])
-        self.sensor = NetFT.Sensor('192.168.1.30')
+
         self.M = np.diag((0.008, 0.008, 0.008, 0.008, 0.008, 0.008))
-        self.B = np.diag((160, 160, 800, 16, 16, 16))
+<<<<<<< HEAD
+        self.B = np.diag((160, 160, 800, 40, 16, 16))
+=======
+        self.B = np.diag((160, 160, 800, 25, 16, 16))
+>>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
         self.v = [0, 0, 0, 0, 0, 0]
         self.vd = [0, 0, 0, 0, 0, 0]
-        self.a = [0, 0, 0, 0, 0, 0]
         self.Tc = 0.008
         self.MNum = np.linalg.inv(self.M+self.B*self.Tc)
         self.target_ft = [0, 0, 15, 0, 0, 0]
         self.target_ft = np.reshape(self.target_ft, (6, 1))
         self.v = np.reshape(self.v, (6, 1))
         self.vd = np.reshape(self.vd, (6, 1))
-        self.a = np.reshape(self.a, (6, 1))
-        self.z = 0
-        self.dz = 0
-        self.lastz = 0
 
     def AxisAng2RotaMatri(self, angle_vec):
         '''
@@ -83,6 +83,8 @@ class ImpedanceController:
         axis_ang = np.array([theta*e1, theta*e2, theta*e3])
         return axis_ang
 
+<<<<<<< HEAD
+=======
     def get_zdz(self):
         self.z = abs(self.robot.get_actual_tcp_pose()[2]-self.initz)
         self.dz = self.z-self.lastz
@@ -92,7 +94,7 @@ class ImpedanceController:
     def fuzzy_reward(self, f, m, z, dz):
         mfoutput = self.fuzzy_mf(f, m)
         zdzoutput = self.fuzzy_zdz(z, dz)
-        reward = self.fuzzy_2(mf, zdz)
+        reward = self.fuzzy_2(mfoutput, zdzoutput)
         return reward
 
     def fuzzy_2(self, mf, zdz):
@@ -167,13 +169,13 @@ class ImpedanceController:
 
     def fuzzy_zdz(self, z, dz):
         secnum = 4
-        dz_max = 1.2
+        dz_max = 6
         everysecdz = dz_max / secnum
         secdz1 = everysecdz
         secdz2 = 2 * everysecdz
         secdz3 = 3 * everysecdz
 
-        z_max = 100
+        z_max = 360
         everysecz = z_max / secnum
         secz1 = everysecz
         secz2 = 2 * everysecz
@@ -242,13 +244,13 @@ class ImpedanceController:
 
     def fuzzy_mf(self, f, m):
         secnum = 4
-        moment_max = 1.5
+        moment_max = 6
         everysecm = moment_max / secnum
         secm1 = everysecm
         secm2 = 2 * everysecm
         secm3 = 3 * everysecm
 
-        force_max = 80
+        force_max = 60
         everysecf = force_max / secnum
         secf1 = everysecf
         secf2 = 2 * everysecf
@@ -316,6 +318,7 @@ class ImpedanceController:
 
         return mfoutput
 
+>>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
     def gravitycomp(self, ft, rotate_i):
         '''
          this is a gravit compensation function to compensate the tool gravity and obtain the precise
@@ -356,7 +359,6 @@ class ImpedanceController:
         # pose_noi[0] += 0.001
         self.robot.movel(pose=pose_noi.tolist(), a=1.2, v=1.0)
         print(pose_noi)
-        self.initz = self.robot.get_actual_tcp_pose()[2]
 
     def correct_bias(self):
         ft = np.array(self.sensor.tare()) / 1000000.0
@@ -385,10 +387,10 @@ class ImpedanceController:
 
         self.v = np.dot(self.MNum * self.Tc, err) + np.dot(self.MNum * self.M, self.vd)
         for i in range(2):
-            if abs(err[i]) < 0.005 or abs(err[i]) > 150:
+            if abs(err[i]) < 0.005 or abs(err[i]) > 100:
                 self.v[i] = 0
         for i in range(3, 6):
-            if abs(err[i]) < 0.001 or abs(err[i]) > 10:
+            if abs(err[i]) < 0.001 or abs(err[i]) > 9:
                 self.v[i] = 0
         # print(self.v)
         for i in range(2):
@@ -400,7 +402,6 @@ class ImpedanceController:
         self.v[2] = (err[2]*0.002)/(1+math.exp(abs(ft_base[2])/30))
         self.v[3:6] = -self.v[3:6]
         # print(self.v)
-        self.a = (self.v-self.vd)/self.Tc
         self.vd = self.v
         v_tmp = self.v.tolist()
         v_cmd = [i for item in v_tmp for i in item]
@@ -408,8 +409,8 @@ class ImpedanceController:
         self.robot.speedl(xd=v_cmd, wait=False, a=1.0)
         ft_tmp = ft_base.tolist()
         ft_record = [i for item in ft_tmp for i in item]
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_ft1.csv', ft_record)
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_v1.csv', v_cmd)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_ftexp.csv', ft_record)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_vexp.csv', v_cmd)
 
     def save2csv(self, filepath, data):
         with open(filepath, 'a', newline='') as t:
@@ -430,60 +431,10 @@ class ImpedanceController:
         ftcomp = self. gravitycomp(ft, np.linalg.inv(rotate))-init_ft
         print(init_ft)
 
-    def get_state_reward(self, variable_name):
-        state = []
-        ft = self.get_ftbase()
-        if variable_name == 'x':
-            state.append(self.v[0, 0])
-            # res.append(self.a[0, 0])
-            state.append(ft[0, 0])
-            z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
-            return state, reward
-        elif variable_name == 'y':
-            state.append(self.v[1, 0])
-            # res.append(self.a[1, 0])
-            state.append(ft[1, 0])
-            z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
-            return state, reward
-        elif variable_name == 'rx':
-            state.append(self.v[3, 0])
-            # res.append(self.a[3, 0])
-            state.append(ft[3, 0])
-            z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
-            return state, reward
-        elif variable_name == 'ry':
-            state.append(self.v[4, 0])
-            # res.append(self.a[4, 0])
-            state.append(ft[4, 0])
-            z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
-            return state, reward
-        # elif variable_name == 'rz':
-        #     res.append(self.v[5, 0])
-        #     # res.append(self.a[5, 0])
-        #     res.append(ft[5, 0])
-        #     z, dz = self.get_zdz()
-        #     reward = self.fuzzy_reward(ft[5, 0], ft[3, 0], z, dz)
-        #     res.append(reward)
-
-    def apply_action(self, variable_name, u):
-        if variable_name == 'x':
-            self.B[0, 0] = u
-        elif variable_name == "y":
-            self.B[1, 1] = u
-        elif variable_name == "rx":
-            self.B[3, 3] = u
-        elif variable_name == "ry":
-            self.B[4, 4] = u
-        # elif variable_name == "rz":
-            # self.B[5, 5] = u
-
 
 if __name__ == "__main__":
     controller = ImpedanceController()
+<<<<<<< HEAD
     controller.move2initpose()
     controller.set_pose_noise()
     controller.correct_bias()
@@ -493,6 +444,31 @@ if __name__ == "__main__":
     while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
         ft_base = controller.get_ftbase()
         controller.imp_run(ft_base)
+=======
+    # controller.move2initpose()
+    # controller.set_pose_noise()
+    # controller.correct_bias()
+    # initp = controller.robot.get_actual_tcp_pose()
+    # z0 = initp[2]
+    # # time.sleep(2.0)
+    # while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
+    #     ft_base = controller.get_ftbase()
+    #     controller.imp_run(ft_base)
+    # controller.robot.stopl()
+    # controller.robot.close()
+    # print('success')
+    for i in range(2):
+        controller.move2initpose()
+        controller.set_pose_noise()
+        controller.correct_bias()
+        z = 0
+        while z < 0.036:
+            ft_base = controller.get_ftbase()
+            controller.imp_run(ft_base)
+            z, dz = controller.get_zdz()
+            controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdzexp.csv', [z, dz])
+    # controller.comptest()
+>>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
     controller.robot.stopl()
     controller.robot.close()
     print('success')

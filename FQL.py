@@ -20,7 +20,13 @@ class Model(object):
     action_set = []
 
     def __init__(self, gamma, alpha, ee_rate, past_weight, q_initial_value, action_set_length, fis=FIS.Build()):
-        self.action_set = [5, 32.5, 60]
+<<<<<<< HEAD
+
+        self.action_set = [35, 67.5, 100]
+
+=======
+        self.action_set = [5, 25, 45]
+>>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
         self.gamma = gamma
         self.alpha = alpha
         self.ee_rate = ee_rate
@@ -68,8 +74,8 @@ class Model(object):
             global_action = global_action + truth_value * self.action_set[self.M[index]]
         if global_action < 5:
             global_action = 5
-        elif global_action > 60:
-            global_action = 60
+        elif global_action > 45:
+            global_action = 45
         return global_action
 
     def CalculateQValue(self):
@@ -116,7 +122,21 @@ class Model(object):
     def KeepStateHistory(self):
         self.R_ = copy.copy(self.R)
 
+    def save_qtable(self):
+<<<<<<< HEAD
+        file = open('/home/zp/github/RL_PEG_IN_HOLE/data/qtable.csv', 'a')
+        np.savetxt(file, self.q_table)
+        file.close()
+
+
+   def get_initial_action(self, state):
+=======
+        file = '/home/zp/github/RL_PEG_IN_HOLE/data/qtable.csv'
+        with open(file, 'a', newline='') as t:
+            np.savetxt(file, self.q_table)
+
     def get_initial_action(self, state):
+>>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
         self.CalculateTruthValue(state)
         self.ActionSelection()
         action = self.CalculateGlobalAction()
