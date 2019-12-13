@@ -484,17 +484,29 @@ class ImpedanceController:
 
 if __name__ == "__main__":
     controller = ImpedanceController()
-    controller.move2initpose()
-    controller.set_pose_noise()
-    controller.correct_bias()
-    initp = controller.robot.get_actual_tcp_pose()
-    z0 = initp[2]
-    # time.sleep(2.0)
-    while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
-        ft_base = controller.get_ftbase()
-        controller.imp_run(ft_base)
+    # controller.move2initpose()
+    # controller.set_pose_noise()
+    # controller.correct_bias()
+    # initp = controller.robot.get_actual_tcp_pose()
+    # z0 = initp[2]
+    # # time.sleep(2.0)
+    # while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
+    #     ft_base = controller.get_ftbase()
+    #     controller.imp_run(ft_base)
+    # controller.robot.stopl()
+    # controller.robot.close()
+    # print('success')
+    for i in range(20):
+        controller.move2initpose()
+        controller.set_pose_noise()
+        controller.correct_bias()
+        z = 0
+        while z < 0.036:
+            ft_base = controller.get_ftbase()
+            controller.imp_run(ft_base)
+            z, dz = self.get_zdz()
+            controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdz.csv', [z, dz])
+    # controller.comptest()
     controller.robot.stopl()
     controller.robot.close()
-    print('success')
-
-    # controller.comptest()
+    # print('success')
