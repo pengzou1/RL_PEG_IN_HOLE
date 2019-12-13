@@ -431,36 +431,36 @@ class ImpedanceController:
         print(init_ft)
 
     def get_state_reward(self, variable_name):
-        res = []
+        state = []
         ft = self.get_ftbase()
         if variable_name == 'x':
-            res.append(self.v[0, 0])
+            state.append(self.v[0, 0])
             # res.append(self.a[0, 0])
-            res.append(ft[0, 0])
+            state.append(ft[0, 0])
             z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(ft[0, 0], ft[4, 0], z, dz)
-            res.append(reward)
+            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
+            return state, reward
         elif variable_name == 'y':
-            res.append(self.v[1, 0])
+            state.append(self.v[1, 0])
             # res.append(self.a[1, 0])
-            res.append(ft[1, 0])
+            state.append(ft[1, 0])
             z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(ft[1, 0], ft[3, 0], z, dz)
-            res.append(reward)
+            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            return state, reward
         elif variable_name == 'rx':
-            res.append(self.v[3, 0])
+            state.append(self.v[3, 0])
             # res.append(self.a[3, 0])
-            res.append(ft[3, 0])
+            state.append(ft[3, 0])
             z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(ft[1, 0], ft[3, 0], z, dz)
-            res.append(reward)
+            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            return state, reward
         elif variable_name == 'ry':
-            res.append(self.v[4, 0])
+            state.append(self.v[4, 0])
             # res.append(self.a[4, 0])
-            res.append(ft[4, 0])
+            state.append(ft[4, 0])
             z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(ft[0, 0], ft[4, 0], z, dz)
-            res.append(reward)
+            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
+            return state, reward
         # elif variable_name == 'rz':
         #     res.append(self.v[5, 0])
         #     # res.append(self.a[5, 0])
@@ -468,7 +468,6 @@ class ImpedanceController:
         #     z, dz = self.get_zdz()
         #     reward = self.fuzzy_reward(ft[5, 0], ft[3, 0], z, dz)
         #     res.append(reward)
-        return res
 
     def apply_action(self, variable_name, u):
         if variable_name == 'x':
@@ -479,8 +478,8 @@ class ImpedanceController:
             self.B[3, 3] = u
         elif variable_name == "ry":
             self.B[4, 4] = u
-        elif variable_name == "rz":
-            self.B[5, 5] = u
+        # elif variable_name == "rz":
+            # self.B[5, 5] = u
 
 
 if __name__ == "__main__":
