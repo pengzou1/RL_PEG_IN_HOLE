@@ -343,7 +343,7 @@ class ImpedanceController:
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = -10*math.pi/360
+        theta = 10*math.pi/360
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
