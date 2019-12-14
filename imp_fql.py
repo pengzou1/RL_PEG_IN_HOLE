@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import FuzzySet
 import StateVariable
 import FQL
@@ -7,12 +8,14 @@ import matplotlib.pyplot as plt
 
 
 # Create FIS
-x1 = StateVariable.InputStateVariable(FuzzySet.Trapeziums(-100, -10.5, -9.5, -5.5), FuzzySet.Triangles(-10, -5, 0),
-                                      FuzzySet.Triangles(5, 0, 5), FuzzySet.Triangles(0, 5, 10), FuzzySet.Trapeziums(5.5, 9.5, 10.5, 100))
-x2 = StateVariable.InputStateVariable(FuzzySet.Trapeziums(-100, -5.25, -4.75, -2.75), FuzzySet.Triangles(-5, -2.5, 0),
-                                      FuzzySet.Triangles(-2.5, 0, 2.5), FuzzySet.Triangles(0, 2.5, 5), FuzzySet.Trapeziums(2.75, 4.75, 5.25, 100))
+x2 = StateVariable.InputStateVariable(FuzzySet.Triangles(-6, -4, -3), FuzzySet.Triangles(-4, -3, -2),
+                                      FuzzySet.Triangles(-3, -2, -1), FuzzySet.Triangles(-2, -1, 0), FuzzySet.Triangles(0, 1, 3))
+x1 = StateVariable.InputStateVariable(FuzzySet.Triangles(-0.03, -0.02, 0.01), FuzzySet.Triangles(-0.02, 0.01, 0.04),
+                                      FuzzySet.Triangles(0.01, 0.04, 0.07), FuzzySet.Triangles(0.04, 0.07, 0.1), FuzzySet.Triangles(0.07, 0.1, 0.2))
 # x3 = StateVariable.InputStateVariable(FuzzySet.Trapeziums(-100, -5.25, -4.75, -2.75), FuzzySet.Triangles(-5, -2.5, 0), FuzzySet.Triangles(-2.5, 0, 2.5), FuzzySet.Triangles(0, 2.5, 5), FuzzySet.Trapeziums(2.75, 4.75, 5.25, 100))
-fis = FIS.Build(x1, x2)
+x3 = StateVariable.InputStateVariable(FuzzySet.Triangles(-0.15, -0.1, -0.05), FuzzySet.Triangles(-0.1, -0.05, 0.0),
+                                      FuzzySet.Triangles(-0.05, 0.0, 0.05), FuzzySet.Triangles(0.0, 0.05, 0.1), FuzzySet.Triangles(0.05, 0.1, 0.15))
+fis = FIS.Build(x1, x2, x3)
 
 
 # Create Model
@@ -21,38 +24,30 @@ vel_list = []
 fh_list = []
 action_list = []
 reward_list = []
-model = FQL.Model(gamma=0.7, alpha=0.5, ee_rate=0.001, past_weight=0.9, q_initial_value='zero',
+model = FQL.Model(gamma=0.7, alpha=0.6, ee_rate=0.85, past_weight=0.9, q_initial_value='zero',
                   action_set_length=3, fis=fis)
 controller = ImpedanceController()
-<<<<<<< HEAD
-step_max = 60
-for episodes in range(0, 1000):
-=======
-step_max = 100
-for episodes in range(1, 1000):
->>>>>>> 969c28ba5c68ec9b494a10f8777348b42b94d233
+controller.move2initpose()
+controller.set_pose_noise()
+controller.correct_bias()
+step_max = 80
+for episodes in range(1, 500):
     # if iteration % 1000 == 0 and iteration <= 20000:
     #     env.__init__()
     #     action = model.get_initial_action(env.state)
     #     reward, state_value = env.apply_action(action)
     # action = model.run(state_value, reward)
     # reward, state_value = env.apply_action(action)
-    filepath = '/home/zp/github/RL_PEG_IN_HOLE/data/episodes'+episodes+'.csv'
+    filepath = '/home/zp/github/RL_PEG_IN_HOLE/data/episodesexp'+str(episodes)+'.csv'
     controller.__init__()
     controller.move2initpose()
     controller.set_pose_noise()
-    controller.correct_bias()
-<<<<<<< HEAD
-    step = 0
-    while (controller.z < 0.036):
-        step += 1
-=======
+    # controller.correct_bias()
     state_init, reward = controller.get_state_reward('rx')
     action = model.get_initial_action(state_init)
     controller.apply_action('rx', action)
     for step in range(1, step_max):
         data_record = []
->>>>>>> 969c28ba5c68ec9b494a10f8777348b42b94d233
         ft_base = controller.get_ftbase()
         controller.imp_run(ft_base)
         state_value, reward = controller.get_state_reward('rx')
@@ -61,23 +56,28 @@ for episodes in range(1, 1000):
             action = model.run(state_value, reward)  # update q table
             data_record.append(state_value[0])
             data_record.append(state_value[1])
+            data_record.append(state_value[2])
             data_record.append(action)
             data_record.append(reward)
             controller.save2csv(filepath, data_record)
+            model.save_qtable()
             break
         else:
             action = model.run(state_value, reward)
             controller.apply_action('rx', action)
             data_record.append(state_value[0])
             data_record.append(state_value[1])
+            data_record.append(state_value[2])
             data_record.append(action)
             data_record.append(reward)
             controller.save2csv(filepath, data_record)
+controller.robot.stopl()
+controller.robot.close()
 # position_list.append(state_value[0])
-        # vel_list.append(state_value[0])
-        # fh_list.append(state_value[1])
-        # action_list.append(action)
-        # reward_list.append(reward)
+# vel_list.append(state_value[0])
+# fh_list.append(state_value[1])
+# action_list.append(action)
+# reward_list.append(reward)
 
 # plt.figure(1)
 # plt.plot(position_list)

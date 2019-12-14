@@ -21,7 +21,7 @@ class Model(object):
     action_set = []
 
     def __init__(self, gamma, alpha, ee_rate, past_weight, q_initial_value, action_set_length, fis=FIS.Build()):
-        self.action_set = [30, 65, 100]
+        self.action_set = [30, 90, 150]
         self.gamma = gamma
         self.alpha = alpha
         self.ee_rate = ee_rate
@@ -54,6 +54,7 @@ class Model(object):
         self.M = []
         r = random.uniform(0, 1)
         max = -sys.maxsize
+        action_index = -1
         for rull in self.q_table:
             if r < self.ee_rate:
                 for index, action in enumerate(rull):
@@ -69,8 +70,8 @@ class Model(object):
             global_action = global_action + truth_value * self.action_set[self.M[index]]
         if global_action < 30:
             global_action = 30
-        elif global_action > 100:
-            global_action = 100
+        elif global_action > 150:
+            global_action = 150
         return global_action
 
     def CalculateQValue(self):

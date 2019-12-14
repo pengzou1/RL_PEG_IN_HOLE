@@ -24,19 +24,20 @@ class ImpedanceController:
     def __init__(self):
 
         self.M = np.diag((0.008, 0.008, 0.008, 0.008, 0.008, 0.008))
-<<<<<<< HEAD
-        self.B = np.diag((160, 160, 800, 40, 16, 16))
-=======
-        self.B = np.diag((160, 160, 800, 25, 16, 16))
->>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
+        self.B = np.diag((160, 160, 800, 60, 16, 16))
         self.v = [0, 0, 0, 0, 0, 0]
         self.vd = [0, 0, 0, 0, 0, 0]
+        self.a = [0, 0, 0, 0, 0, 0]
         self.Tc = 0.008
         self.MNum = np.linalg.inv(self.M+self.B*self.Tc)
         self.target_ft = [0, 0, 15, 0, 0, 0]
         self.target_ft = np.reshape(self.target_ft, (6, 1))
         self.v = np.reshape(self.v, (6, 1))
         self.vd = np.reshape(self.vd, (6, 1))
+        self.a = np.reshape(self.vd, (6, 1))
+        self.z = 0
+        self.lastz = 0
+        self.dz = 0
 
     def AxisAng2RotaMatri(self, angle_vec):
         '''
@@ -83,8 +84,6 @@ class ImpedanceController:
         axis_ang = np.array([theta*e1, theta*e2, theta*e3])
         return axis_ang
 
-<<<<<<< HEAD
-=======
     def get_zdz(self):
         self.z = abs(self.robot.get_actual_tcp_pose()[2]-self.initz)
         self.dz = self.z-self.lastz
@@ -318,7 +317,6 @@ class ImpedanceController:
 
         return mfoutput
 
->>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
     def gravitycomp(self, ft, rotate_i):
         '''
          this is a gravit compensation function to compensate the tool gravity and obtain the precise
@@ -340,7 +338,7 @@ class ImpedanceController:
         x = [-0.11953694869004786, -0.4636732413647742, 0.19956611419633097,
              0.34418941658334096, 3.122197481868604, -0.03536070824609871]
 
-        self.robot.movel(pose=x, a=1.2, v=1.0)
+        self.robot.movel(pose=x, a=0.1, v=0.5)
 
     def set_pose_noise(self):
         init_pose = self.robot.get_actual_tcp_pose()
@@ -358,7 +356,8 @@ class ImpedanceController:
         pose_noi[-3:] = self.RotatMatr2AxisAng(rotate_noi)
         # pose_noi[0] += 0.001
         self.robot.movel(pose=pose_noi.tolist(), a=1.2, v=1.0)
-        print(pose_noi)
+        self.initz = self.robot.get_actual_tcp_pose()[2]
+        # print(pose_noi)
 
     def correct_bias(self):
         ft = np.array(self.sensor.tare()) / 1000000.0
@@ -396,12 +395,15 @@ class ImpedanceController:
         for i in range(2):
             if abs(self.v[i]) < 0.5 or abs(self.v[i]) > 1.5:
                 self.v[i] = 0
-        for i in range(3, 6):
+        if abs(self.v[3]) < 0.001 or abs(self.v[i]) > 1.0:
+            self.v[3] = 0
+        for i in range(4, 6):
             if abs(self.v[i]) < 0.1 or abs(self.v[i]) > 1.0:
                 self.v[i] = 0
         self.v[2] = (err[2]*0.002)/(1+math.exp(abs(ft_base[2])/30))
         self.v[3:6] = -self.v[3:6]
         # print(self.v)
+        self.a = self.v-self.vd
         self.vd = self.v
         v_tmp = self.v.tolist()
         v_cmd = [i for item in v_tmp for i in item]
@@ -417,6 +419,58 @@ class ImpedanceController:
             writer1 = csv.writer(t)
             writer1.writerow(data)
 
+    def get_state_reward(self, variable_name):
+        state = []
+        ft = self.get_ftbase()
+        if variable_name == 'x':
+            state.append(self.v[0, 0])
+            # res.append(self.a[0, 0])
+            state.append(ft[0, 0])
+            z, dz = self.get_zdz()
+            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
+            return state, reward
+        elif variable_name == 'y':
+            state.append(self.v[1, 0])
+            # res.append(self.a[1, 0])
+            state.append(ft[1, 0])
+            z, dz = self.get_zdz()
+            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            return state, reward
+        elif variable_name == 'rx':
+            state.append(self.v[3, 0])
+            # res.append(self.a[3, 0])
+            state.append(ft[3, 0])
+            state.append(self.a[3, 0])
+            z, dz = self.get_zdz()
+            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            return state, reward
+        elif variable_name == 'ry':
+            state.append(self.v[4, 0])
+            # res.append(self.a[4, 0])
+            state.append(ft[4, 0])
+            z, dz = self.get_zdz()
+            reward = self.fuzzy_reward(abs(ft[0, 0]), abs(ft[4, 0]), z, dz)
+            return state, reward
+        # elif variable_name == 'rz':
+        #     res.append(self.v[5, 0])
+        #     # res.append(self.a[5, 0])
+        #     res.append(ft[5, 0])
+        #     z, dz = self.get_zdz()
+        #     reward = self.fuzzy_reward(ft[5, 0], ft[3, 0], z, dz)
+        #     res.append(reward)
+
+    def apply_action(self, variable_name, u):
+        if variable_name == 'x':
+            self.B[0, 0] = u
+        elif variable_name == "y":
+            self.B[1, 1] = u
+        elif variable_name == "rx":
+            self.B[3, 3] = u
+        elif variable_name == "ry":
+            self.B[4, 4] = u
+        # elif variable_name == "rz":
+            # self.B[5, 5] = u
+
     def comptest(self):
         # init_ft = np.array(self.sensor.tare()) / 1000000.0
         ft = np.array(self.sensor.tare()) / 1000000.0
@@ -429,25 +483,15 @@ class ImpedanceController:
         axisangle = pose[-3:]
         rotate = self.AxisAng2RotaMatri(axisangle)
         ftcomp = self. gravitycomp(ft, np.linalg.inv(rotate))-init_ft
-        print(init_ft)
+        print(ftcomp)
 
 
 if __name__ == "__main__":
     controller = ImpedanceController()
-<<<<<<< HEAD
     controller.move2initpose()
     controller.set_pose_noise()
     controller.correct_bias()
-    initp = controller.robot.get_actual_tcp_pose()
-    z0 = initp[2]
-    # time.sleep(2.0)
-    while abs(controller.robot.get_actual_tcp_pose()[2]-z0) < 0.036:
-        ft_base = controller.get_ftbase()
-        controller.imp_run(ft_base)
-=======
-    # controller.move2initpose()
-    # controller.set_pose_noise()
-    # controller.correct_bias()
+    controller.comptest()
     # initp = controller.robot.get_actual_tcp_pose()
     # z0 = initp[2]
     # # time.sleep(2.0)
@@ -460,7 +504,7 @@ if __name__ == "__main__":
     for i in range(2):
         controller.move2initpose()
         controller.set_pose_noise()
-        controller.correct_bias()
+        # controller.correct_bias()
         z = 0
         while z < 0.036:
             ft_base = controller.get_ftbase()
@@ -468,9 +512,9 @@ if __name__ == "__main__":
             z, dz = controller.get_zdz()
             controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdzexp.csv', [z, dz])
     # controller.comptest()
->>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
+
     controller.robot.stopl()
     controller.robot.close()
     print('success')
 
-    # controller.comptest()
+# controller.comptest()
