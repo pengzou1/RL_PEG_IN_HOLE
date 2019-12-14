@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import numpy as np
 import FIS
 import operator
@@ -20,13 +21,7 @@ class Model(object):
     action_set = []
 
     def __init__(self, gamma, alpha, ee_rate, past_weight, q_initial_value, action_set_length, fis=FIS.Build()):
-<<<<<<< HEAD
-
-        self.action_set = [35, 67.5, 100]
-
-=======
-        self.action_set = [5, 25, 45]
->>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
+        self.action_set = [30, 65, 100]
         self.gamma = gamma
         self.alpha = alpha
         self.ee_rate = ee_rate
@@ -72,10 +67,10 @@ class Model(object):
         global_action = 0
         for index, truth_value in enumerate(self.R):
             global_action = global_action + truth_value * self.action_set[self.M[index]]
-        if global_action < 5:
-            global_action = 5
-        elif global_action > 45:
-            global_action = 45
+        if global_action < 30:
+            global_action = 30
+        elif global_action > 100:
+            global_action = 100
         return global_action
 
     def CalculateQValue(self):
@@ -104,7 +99,8 @@ class Model(object):
             for col_index in range(0, self.action_set_length):
                 if col_index == self.M[row_index]:
                     self.epsilon[row_index, col_index] = self.gamma * \
-                        self.past_weight * self.epsilon[row_index, col_index] + truth_value
+                        self.past_weight * self.epsilon[row_index,
+                                                        col_index] + truth_value/sum(self.R_)
                 else:
                     self.epsilon[row_index, col_index] = self.gamma * \
                         self.past_weight * self.epsilon[row_index, col_index]
@@ -113,7 +109,7 @@ class Model(object):
         for index in range(0, self.fis.get_number_of_rules()):
             delta_Q = self.alpha * self.Error * self.epsilon[index, self.M[index]]
             self.q_table[index, self.M[index]] = self.q_table[index, self.M[index]] + delta_Q
-
+        # print(delta_Q)
     # def UpdateqValue(self):
     #     for index, truth_value in enumerate(self.R_):
     #         delta_Q = self.alpha * (self.Error * truth_value)
@@ -123,20 +119,11 @@ class Model(object):
         self.R_ = copy.copy(self.R)
 
     def save_qtable(self):
-<<<<<<< HEAD
         file = open('/home/zp/github/RL_PEG_IN_HOLE/data/qtable.csv', 'a')
         np.savetxt(file, self.q_table)
         file.close()
 
-
-   def get_initial_action(self, state):
-=======
-        file = '/home/zp/github/RL_PEG_IN_HOLE/data/qtable.csv'
-        with open(file, 'a', newline='') as t:
-            np.savetxt(file, self.q_table)
-
     def get_initial_action(self, state):
->>>>>>> e23c12b66672b207db928ce99dc0c07c4cf60cf9
         self.CalculateTruthValue(state)
         self.ActionSelection()
         action = self.CalculateGlobalAction()
