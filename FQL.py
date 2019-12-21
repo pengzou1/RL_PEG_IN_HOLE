@@ -21,7 +21,7 @@ class Model(object):
     action_set = []
 
     def __init__(self, gamma, alpha, ee_rate, past_weight, q_initial_value, action_set_length, fis=FIS.Build()):
-        self.action_set = [30, 90, 150]
+        self.action_set = [50.0, 75.0, 100.0]
         self.gamma = gamma
         self.alpha = alpha
         self.ee_rate = ee_rate
@@ -34,6 +34,10 @@ class Model(object):
                 (self.fis.get_number_of_rules(), self.action_set_length))
         if self.q_initial_value == 'zero':
             self.q_table = np.zeros((self.fis.get_number_of_rules(), self.action_set_length))
+        if self.q_initial_value == 'file':
+            self.q_table = np.loadtxt(
+                '/home/zp/github/RL_PEG_IN_HOLE/data/qtable.csv', delimiter=" ", dtype="float")[-25:, :]
+        print(self.q_table)
         self.epsilon = np.zeros((self.fis.get_number_of_rules(), self.action_set_length))
 
     def CalculateTruthValue(self, state_value):
@@ -49,16 +53,19 @@ class Model(object):
             self.L.append(X)
         for element in itertools.product(*self.L):
             self.R.append(functools.reduce(operator.mul, element, 1))
+            # self.R.append(functools.reduce(min, element))
+        # print(self.R)
 
     def ActionSelection(self):
         self.M = []
-        r = random.uniform(0, 1)
-        max = -sys.maxsize
-        action_index = -1
         for rull in self.q_table:
-            if r < self.ee_rate:
+            r = random.uniform(0, 1)
+            max = -sys.maxsize
+            action_index = -1
+            if r <= self.ee_rate:
                 for index, action in enumerate(rull):
                     if action > max:
+                        max = action
                         action_index = index
             else:
                 action_index = random.randint(0, self.action_set_length - 1)
@@ -68,10 +75,14 @@ class Model(object):
         global_action = 0
         for index, truth_value in enumerate(self.R):
             global_action = global_action + truth_value * self.action_set[self.M[index]]
-        if global_action < 30:
-            global_action = 30
-        elif global_action > 150:
-            global_action = 150
+        if sum(self.R) == 0:
+            self.R[0] = 0.00001
+        global_action = global_action/sum(self.R)
+        # print(global_action)
+        if global_action < 50:
+            global_action = 50.0
+        elif global_action > 100:
+            global_action = 100.0
         return global_action
 
     def CalculateQValue(self):
@@ -82,10 +93,10 @@ class Model(object):
 
     def CalculateStateValue(self):
         self.V = 0
-        max = -sys.maxsize
         for index, rull in enumerate(self.q_table):
+            max = -sys.maxsize
             for action in rull:
-                if action < max:
+                if action > max:
                     max = action
             self.V = (self.R[index] * max) + self.V
         if sum(self.R) == 0:
@@ -108,7 +119,9 @@ class Model(object):
 
     def UpdateqValue(self):
         for index in range(0, self.fis.get_number_of_rules()):
-            delta_Q = self.alpha * self.Error * self.epsilon[index, self.M[index]]
+            # delta_Q = self.alpha * self.Error * self.epsilon[index, self.M[index]]
+            delta_Q = self.alpha * self.Error
+            # print(delta_Q)
             self.q_table[index, self.M[index]] = self.q_table[index, self.M[index]] + delta_Q
         # print(delta_Q)
     # def UpdateqValue(self):
@@ -130,6 +143,12 @@ class Model(object):
         action = self.CalculateGlobalAction()
         self.CalculateQValue()
         self.KeepStateHistory()
+        return action
+
+    def test(self, state):
+        self.CalculateTruthValue(state)
+        self.ActionSelection()
+        action = self.CalculateGlobalAction()
         return action
 
     def run(self, state, reward):

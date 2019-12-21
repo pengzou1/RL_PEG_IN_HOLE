@@ -24,12 +24,12 @@ class ImpedanceController:
     def __init__(self):
 
         self.M = np.diag((0.008, 0.008, 0.008, 0.008, 0.008, 0.008))
-        self.B = np.diag((160, 160, 800, 60, 16, 16))
+        self.B = np.diag((100, 100, 800, 100, 30, 30))
         self.v = [0, 0, 0, 0, 0, 0]
         self.vd = [0, 0, 0, 0, 0, 0]
         self.a = [0, 0, 0, 0, 0, 0]
         self.Tc = 0.008
-        self.MNum = np.linalg.inv(self.M+self.B*self.Tc)
+
         self.target_ft = [0, 0, 15, 0, 0, 0]
         self.target_ft = np.reshape(self.target_ft, (6, 1))
         self.v = np.reshape(self.v, (6, 1))
@@ -98,29 +98,29 @@ class ImpedanceController:
 
     def fuzzy_2(self, mf, zdz):
         secnum = 4
-        mf_max = 1
+        mf_max = -1
         everysecmf = mf_max / secnum
         secmf1 = everysecmf
         secmf2 = 2 * everysecmf
         secmf3 = 3 * everysecmf
 
-        mf1 = 1 - mf / everysecmf
+        mf1 = 1 + mf / everysecmf
         mf2 = 1 - abs(mf - secmf1) / everysecmf
         mf3 = 1 - abs(mf - secmf2) / everysecmf
         mf4 = 1 - abs(mf - secmf3) / everysecmf
-        mf5 = (mf - secmf3) / everysecmf
+        mf5 = -(mf - secmf3) / everysecmf
 
-        zdz_max = 1
+        zdz_max = -1
         everyseczdz = zdz_max / secnum
         seczdz1 = everyseczdz
         seczdz2 = 2 * everyseczdz
         seczdz3 = 3 * everyseczdz
 
-        zdz1 = 1 - zdz / everyseczdz
+        zdz1 = 1 + zdz / everyseczdz
         zdz2 = 1 - abs(zdz - seczdz1) / everyseczdz
         zdz3 = 1 - abs(zdz - seczdz2) / everyseczdz
         zdz4 = 1 - abs(zdz - seczdz3) / everyseczdz
-        zdz5 = (zdz - seczdz3) / everyseczdz
+        zdz5 = -(zdz - seczdz3) / everyseczdz
 
         mf1 = max(min(mf1, 1.0), 0.0)
         mf2 = max(min(mf2, 1.0), 0.0)
@@ -167,14 +167,16 @@ class ImpedanceController:
         return output
 
     def fuzzy_zdz(self, z, dz):
+        z = z*1000
+        dz = dz*1000
         secnum = 4
-        dz_max = 6
+        dz_max = 3
         everysecdz = dz_max / secnum
         secdz1 = everysecdz
         secdz2 = 2 * everysecdz
         secdz3 = 3 * everysecdz
 
-        z_max = 360
+        z_max = 26
         everysecz = z_max / secnum
         secz1 = everysecz
         secz2 = 2 * everysecz
@@ -237,19 +239,19 @@ class ImpedanceController:
         zdzoutput = (4.0 * (r1 + r2) + 2.0 * ratio * (r6) + 2.0 * (r3 + r7 + r11) + ratio * (r8 + r9 + r12) +
                      1.0 * (r4 + r13) + 1 / ratio * (r5 + r16) + 0.5 * (r10 + r14 +
                                                                         r17 + r18) + 0.5 * ratio * (r15 + r19 + r21 + r22 + r23)
-                     + 0.25 * (r20 + r24 + r25)) / (4.0 * r0)
-
+                     + 0.25 * (r20 + r24 + r25)) / -(4.0 * r0)
+        # print(zdzoutput)
         return zdzoutput
 
     def fuzzy_mf(self, f, m):
         secnum = 4
-        moment_max = 6
+        moment_max = 5
         everysecm = moment_max / secnum
         secm1 = everysecm
         secm2 = 2 * everysecm
         secm3 = 3 * everysecm
 
-        force_max = 60
+        force_max = 44
         everysecf = force_max / secnum
         secf1 = everysecf
         secf2 = 2 * everysecf
@@ -313,7 +315,7 @@ class ImpedanceController:
         mfoutput = (4.0 * (r1 + r2 + r6) + 2.0 * ratio * (r3 + r7 + r8) + 2.0 * (r4 + r9 + r11) + ratio * (r5 + r10 + r12) +
                     1.0 * (r13 + r16) + 1 / ratio * (r14 + r17 + r21 + r22) +
                     0.5 * (r15 + r18) + 0.5 * ratio * (r19 + r20 + r23)
-                    + 0.25 * (r24 + r25)) / (4 * r0)
+                    + 0.25 * (r24 + r25)) / -(4 * r0)
 
         return mfoutput
 
@@ -337,14 +339,15 @@ class ImpedanceController:
     def move2initpose(self):
         x = [-0.11953694869004786, -0.4636732413647742, 0.19956611419633097,
              0.34418941658334096, 3.122197481868604, -0.03536070824609871]
-
+        # x = [-0.11819919972034086, -0.45426283327612405, 0.1999228367933996, -
+        #  0.31333842972576104, -3.1016449048271983, 0.0017124526375461655]
         self.robot.movel(pose=x, a=0.1, v=0.5)
 
     def set_pose_noise(self):
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = 10*math.pi/360
+        theta = 30*math.pi/360
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
@@ -381,6 +384,8 @@ class ImpedanceController:
         return ft_base
 
     def imp_run(self, ft_base):
+        # print(self.B[3, 3])
+        self.MNum = np.linalg.inv(self.M+self.B*self.Tc)
         err = ft_base-self.target_ft
         # print(err)
 
@@ -389,17 +394,18 @@ class ImpedanceController:
             if abs(err[i]) < 0.005 or abs(err[i]) > 100:
                 self.v[i] = 0
         for i in range(3, 6):
-            if abs(err[i]) < 0.001 or abs(err[i]) > 9:
+            if abs(err[i]) < 0.0001 or abs(err[i]) > 9:
                 self.v[i] = 0
         # print(self.v)
-        for i in range(2):
+        for i in range(3):
             if abs(self.v[i]) < 0.5 or abs(self.v[i]) > 1.5:
-                self.v[i] = 0
-        if abs(self.v[3]) < 0.001 or abs(self.v[i]) > 1.0:
-            self.v[3] = 0
-        for i in range(4, 6):
-            if abs(self.v[i]) < 0.1 or abs(self.v[i]) > 1.0:
-                self.v[i] = 0
+                self.v[i] = 0.000
+                # self.vd[i] = 0
+
+        for i in range(3, 6):
+            if abs(self.v[i]) < 0.0001 or abs(self.v[i]) > 1.0:
+                self.v[i] = 0.0
+                # self.vd[i] = 0
         self.v[2] = (err[2]*0.002)/(1+math.exp(abs(ft_base[2])/30))
         self.v[3:6] = -self.v[3:6]
         # print(self.v)
@@ -411,8 +417,8 @@ class ImpedanceController:
         self.robot.speedl(xd=v_cmd, wait=False, a=1.0)
         ft_tmp = ft_base.tolist()
         ft_record = [i for item in ft_tmp for i in item]
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_ftexp.csv', ft_record)
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/imp_vexp.csv', v_cmd)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/fql/imp_ft_fql.csv', ft_record)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data//fql/imp_v_fql.csv', v_cmd)
 
     def save2csv(self, filepath, data):
         with open(filepath, 'a', newline='') as t:
@@ -434,15 +440,18 @@ class ImpedanceController:
             # res.append(self.a[1, 0])
             state.append(ft[1, 0])
             z, dz = self.get_zdz()
-            reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            reward = self.fuzzy_reward(max(abs(ft[1, 0]), abs(ft[2, 0])), abs(ft[3, 0]), z, dz)
             return state, reward
         elif variable_name == 'rx':
-            state.append(self.v[3, 0])
+            state.append(abs(self.v[3, 0]))
             # res.append(self.a[3, 0])
-            state.append(ft[3, 0])
-            state.append(self.a[3, 0])
+            state.append(abs(ft[3, 0]))
+            # state.append(self.a[3, 0])
             z, dz = self.get_zdz()
             reward = self.fuzzy_reward(abs(ft[1, 0]), abs(ft[3, 0]), z, dz)
+            # f = math.sqrt(ft[0, 0]*ft[0, 0]+ft[1, 0]*ft[1, 0]+ft[2, 0]*ft[2, 0])
+            # m = math.sqrt(ft[3, 0]*ft[3, 0]+ft[4, 0]*ft[4, 0]+ft[5, 0]*ft[5, 0])
+            # reward = self.fuzzy_reward(f, m, z, dz)
             return state, reward
         elif variable_name == 'ry':
             state.append(self.v[4, 0])
@@ -501,7 +510,7 @@ if __name__ == "__main__":
     # controller.robot.stopl()
     # controller.robot.close()
     # print('success')
-    for i in range(2):
+    for i in range(1, 2):
         controller.move2initpose()
         controller.set_pose_noise()
         # controller.correct_bias()
@@ -510,7 +519,7 @@ if __name__ == "__main__":
             ft_base = controller.get_ftbase()
             controller.imp_run(ft_base)
             z, dz = controller.get_zdz()
-            controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdzexp.csv', [z, dz])
+    #         controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdzexp.csv', [z, dz])
     # controller.comptest()
 
     controller.robot.stopl()

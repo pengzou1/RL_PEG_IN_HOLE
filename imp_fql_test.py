@@ -26,60 +26,67 @@ fis = FIS.Build(x1, x2)
 # Create Model
 # position_list = []
 
-model = FQL.Model(gamma=0.1, alpha=0.15, ee_rate=0.9, past_weight=0.9, q_initial_value='random',
+model = FQL.Model(gamma=0.1, alpha=0.15, ee_rate=1.0, past_weight=0.9, q_initial_value='file',
                   action_set_length=3, fis=fis)
 controller = ImpedanceController()
 controller.move2initpose()
 controller.set_pose_noise()
 controller.correct_bias()
-step_max = 50
-for episodes in range(1, 5):
+step_max = 500
+for episodes in range(1, 6):
     # if iteration % 1000 == 0 and iteration <= 20000:
     #     env.__init__()
     #     action = model.get_initial_action(env.state)
     #     reward, state_value = env.apply_action(action)
     # action = model.run(state_value, reward)
     # reward, state_value = env.apply_action(action)
-    filepath = '/home/zp/github/RL_PEG_IN_HOLE/data/fql/episodesexp'+str(episodes)+'.csv'
+    # filepath = '/home/zp/github/RL_PEG_IN_HOLE/data/fqltest.csv'
     controller.__init__()
     controller.move2initpose()
     controller.set_pose_noise()
     # controller.correct_bias()
-    state_init, reward = controller.get_state_reward('rx')
-    # state_init[0] = max(min(state_init[0], 0.09), -0.029)
-    # state_init[1] = max(min(state_init[0], 2.9), -5.9)
-    # state_init = [state_init[0], state_init[1]]
-    action = model.get_initial_action(state_init)
-    controller.apply_action('rx', action)
+    # state_init, reward = controller.get_state_reward('rx')
+    # # state_init[0] = max(min(state_init[0], 0.09), -0.029)
+    # # state_init[1] = max(min(state_init[0], 2.9), -5.9)
+    # # state_init = [state_init[0], state_init[1]]
+    # action = model.get_initial_action(state_init)
+    # controller.apply_action('rx', action)
     for step in range(1, step_max):
+        if controller.z > 0.026:
+            break
         data_record = []
+        state_value, reward = controller.get_state_reward('rx')
+        action = model.test(state_value)
+        print(action)
+        controller.apply_action('rx', action)
         ft_base = controller.get_ftbase()
         controller.imp_run(ft_base)
-        # time.sleep(0.05)
-        state_value, reward = controller.get_state_reward('rx')
+        ft_tmp = ft_base.tolist()
+        ft_record = [i for item in ft_tmp for i in item]
+        controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data//fql/fqltest_ft' +
+                            str(episodes)+'.csv', ft_record)
+        data_record.append(state_value[0])
+        data_record.append(state_value[1])
+        data_record.append(action)
+        controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data//fql/fqltest_act' +
+                            str(episodes)+'.csv', data_record)
         # state_value[0] = max(min(state_value[0], 0.09), -0.029)
         # state_value[1] = max(min(state_value[1], 2.9), -5.9)
         # state_value = [state_value[0], state_value[1]]
-        if controller.z > 0.036:
-            reward = reward+1-step/step_max
-            action = model.run(state_value, reward)  # update q table
-            data_record.append(state_value[0])
-            data_record.append(state_value[1])
-            # data_record.append(state_value[2])
-            data_record.append(action)
-            data_record.append(reward)
-            controller.save2csv(filepath, data_record)
-            model.save_qtable()
-            break
-        else:
-            action = model.run(state_value, reward)
-            controller.apply_action('rx', action)
-            data_record.append(state_value[0])
-            data_record.append(state_value[1])
-            # data_record.append(state_value[2])
-            data_record.append(action)
-            data_record.append(reward)
-            controller.save2csv(filepath, data_record)
+        # if controller.z > 0.026:
+        #     reward = reward+1-step/step_max
+        #     action = model.run(state_value, reward)  # update q table
+        #     data_record.append(state_value[0])
+        #     data_record.append(state_value[1])
+        #     # data_record.append(state_value[2])
+        #     data_record.append(action)
+        #     data_record.append(reward)
+        #     controller.save2csv(filepath, data_record)
+        #     model.save_qtable()
+        #     break
+        # else:
+
+
 controller.robot.stopl()
 controller.robot.close()
 # position_list.append(state_value[0])
