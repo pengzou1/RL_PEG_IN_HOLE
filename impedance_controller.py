@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import joblib
 import URBasic
 import time
 import math
@@ -14,6 +15,12 @@ p = np.array([[0, -0.0545,  0.0034], [0.0545, 0, 0.0023],
 fd = np.array([-0.3819, -1.3764, -8.9912,  -0.0131,    -0.0841,      -0.0328])
 tcp2sensor = np.linalg.inv(s2tcptran)
 zero = np.zeros((3, 3), dtype=float)
+vcc = 0.1
+acc = 0.1
+d = 0.001
+mlp = joblib.load('mlp2.pkl')
+mean = np.array([-0.56343318, - 0.3632879, - 0.28735675, 0.09976162])
+std = np.array([0.66760705, 0.92386432, 0.15856688, 0.05147471])
 
 
 class ImpedanceController:
@@ -24,7 +31,7 @@ class ImpedanceController:
     def __init__(self):
 
         self.M = np.diag((0.008, 0.008, 0.008, 0.008, 0.008, 0.008))
-        self.B = np.diag((100, 100, 800, 100, 30, 30))
+        self.B = np.diag((100, 100, 800, 30, 30, 30))
         self.v = [0, 0, 0, 0, 0, 0]
         self.vd = [0, 0, 0, 0, 0, 0]
         self.a = [0, 0, 0, 0, 0, 0]
@@ -38,6 +45,11 @@ class ImpedanceController:
         self.z = 0
         self.lastz = 0
         self.dz = 0
+        self.P = np.diag((0.00, 0.00, 0.0001, 0.00, 0.00, 0.00))
+        self.I = np.diag((0, 0, 0.0001, 0, 0, 0))
+        self.D = np.diag((0, 0, 0.0004, 0, 0, 0))
+        self.move = np.array([[0, d, 0, 0, 0, 0], [0, -d, 0, 0, 0, 0],
+                              [-d, 0, 0, 0, 0, 0], [d, 0, 0, 0, 0, 0]])
 
     def AxisAng2RotaMatri(self, angle_vec):
         '''
@@ -97,30 +109,32 @@ class ImpedanceController:
         return reward
 
     def fuzzy_2(self, mf, zdz):
+        mf = -mf
+        zdz = -zdz
         secnum = 4
-        mf_max = -1
+        mf_max = 1
         everysecmf = mf_max / secnum
         secmf1 = everysecmf
         secmf2 = 2 * everysecmf
         secmf3 = 3 * everysecmf
 
-        mf1 = 1 + mf / everysecmf
+        mf1 = 1 - mf / everysecmf
         mf2 = 1 - abs(mf - secmf1) / everysecmf
         mf3 = 1 - abs(mf - secmf2) / everysecmf
         mf4 = 1 - abs(mf - secmf3) / everysecmf
-        mf5 = -(mf - secmf3) / everysecmf
+        mf5 = (mf - secmf3) / everysecmf
 
-        zdz_max = -1
+        zdz_max = 1
         everyseczdz = zdz_max / secnum
         seczdz1 = everyseczdz
         seczdz2 = 2 * everyseczdz
         seczdz3 = 3 * everyseczdz
 
-        zdz1 = 1 + zdz / everyseczdz
+        zdz1 = 1 - zdz / everyseczdz
         zdz2 = 1 - abs(zdz - seczdz1) / everyseczdz
         zdz3 = 1 - abs(zdz - seczdz2) / everyseczdz
         zdz4 = 1 - abs(zdz - seczdz3) / everyseczdz
-        zdz5 = -(zdz - seczdz3) / everyseczdz
+        zdz5 = (zdz - seczdz3) / everyseczdz
 
         mf1 = max(min(mf1, 1.0), 0.0)
         mf2 = max(min(mf2, 1.0), 0.0)
@@ -312,10 +326,10 @@ class ImpedanceController:
         ratio = math.sqrt(2)
         r0 = r1 + r2 + r3 + r4 + r5 + r6 + r7 + r8 + r9 + r10 + r11 + r12 + r13 + \
             r14 + r15 + r16 + r17 + r18 + r19 + r20 + r21 + r22 + r23 + r24 + r25
-        mfoutput = (4.0 * (r1 + r2 + r6) + 2.0 * ratio * (r3 + r7 + r8) + 2.0 * (r4 + r9 + r11) + ratio * (r5 + r10 + r12) +
-                    1.0 * (r13 + r16) + 1 / ratio * (r14 + r17 + r21 + r22) +
-                    0.5 * (r15 + r18) + 0.5 * ratio * (r19 + r20 + r23)
-                    + 0.25 * (r24 + r25)) / -(4 * r0)
+        mfoutput = (0.25 * (r1 + r2 + r6) + 0.5 * ratio * (r3 + r7 + r8) + 0.5 * (r4 + r9 + r11) + 1 / ratio * (r5 + r10 + r12) +
+                    1.0 * (r13 + r16) + ratio * (r14 + r17 + r21 + r22) +
+                    2.0 * (r15 + r18) + 2 * ratio * (r19 + r20 + r23)
+                    + 4.0 * (r24 + r25)) / -(4 * r0)
 
         return mfoutput
 
@@ -347,7 +361,7 @@ class ImpedanceController:
         init_pose = self.robot.get_actual_tcp_pose()
         axisangle = init_pose[-3:]
         init_rotate = self.AxisAng2RotaMatri(axisangle)
-        theta = 30*math.pi/360
+        theta = 3*math.pi/360
         Rx = np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)],
                        [0, np.sin(theta), np.cos(theta)]])
         Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [
@@ -357,6 +371,8 @@ class ImpedanceController:
         rotate_noi = np.dot(init_rotate, Rx)
         pose_noi = init_pose[:]
         pose_noi[-3:] = self.RotatMatr2AxisAng(rotate_noi)
+        pose_noi[0] += 0.003
+        pose_noi[1] -= 0.003
         # pose_noi[0] += 0.001
         self.robot.movel(pose=pose_noi.tolist(), a=1.2, v=1.0)
         self.initz = self.robot.get_actual_tcp_pose()[2]
@@ -417,8 +433,8 @@ class ImpedanceController:
         self.robot.speedl(xd=v_cmd, wait=False, a=1.0)
         ft_tmp = ft_base.tolist()
         ft_record = [i for item in ft_tmp for i in item]
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/fql/imp_ft_fql.csv', ft_record)
-        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data//fql/imp_v_fql.csv', v_cmd)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data2/imp_ft_fql5.csv', ft_record)
+        self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data2/imp_v_fql2.csv', v_cmd)
 
     def save2csv(self, filepath, data):
         with open(filepath, 'a', newline='') as t:
@@ -494,8 +510,70 @@ class ImpedanceController:
         ftcomp = self. gravitycomp(ft, np.linalg.inv(rotate))-init_ft
         print(ftcomp)
 
+    def search_hole(self):
+        z0 = self.robot.get_actual_tcp_pose()[2]
+        print('seh')
+        while True:
+            # if count > 1000:
+            #     break
+            currentPose = self.robot.get_actual_tcp_pose()
+            pose_record = currentPose.tolist()
+            with open("searchdata9.csv", 'a', newline='') as t:
+                writer1 = csv.writer(t)
+                writer1.writerow(pose_record)
+            err_i = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            err_i = np.reshape(err_i, (6, 1))
+            err_d = np.array([0, 0, 0, 0, 0, 0])
+            err_d = np.reshape(err_d, (6, 1))
+            for i in range(10):
+                if self.robot.get_actual_tcp_pose()[2]-z0 < -0.005:
+                    self.v = self.vd
+                    print('suc')
+                    self.robot.stopl()
+                    #  self.robot.close()
+                    return
+                ft = np.array(self.sensor.tare()) / 1000000.0
+                # print(ft)
+                pose = self.robot.get_actual_tcp_pose()
+                axisangle = pose[-3:]
+                rotate = self.AxisAng2RotaMatri(axisangle)
+                # 2.4926138340994397, -1.911217721409695, -0.006238534241991061]
+                ftcomp = self.gravitycomp(ft, np.linalg.inv(rotate))-self.init_ft
+                # ft_sensor_record = ftcomp.tolist()
+                base2sensor = np.dot(rotate, tcp2sensor)
+                base2sensor1 = np.c_[base2sensor, zero]
+                base2sensor2 = np.c_[zero, base2sensor]
+                base2sensortran = np.r_[base2sensor1, base2sensor2]
+                # print(base2sensortran)
+                ft_base = np.reshape(np.dot(base2sensortran, ftcomp), (6, 1))
+                err = self.target_ft-ft_base
+                # print(err)
+                err_i = err_i + err
+                err_l = err-err_d
+                err_d = err
+                # print(err)
+                if abs(err[2]) < 1:
+                    self.robot.stopl()
+                    x = np.array([ft_base[0][0], ft_base[1][0], ft_base[3][0], ft_base[4][0]])
+                    x_in = (x-mean)/std
+                    nextdirection = mlp.predict(np.array([x_in]))
+                    print(nextdirection)
+                    nextPose = currentPose+self.move[nextdirection[0]]
+                    # #print(nextPose)
+                    self.robot.movel(pose=nextPose.tolist(), a=acc, v=vcc)
+                    break
+                self.v = -(np.dot(self.P, err)+np.dot(self.D, err_l) +
+                           np.dot(self.I, err_i))/(1+math.exp(abs(ft_base[2])/30))
+                v_tmp = self.v.tolist()
+                v_cmd = [i for item in v_tmp for i in item]
+                self.robot.speedl(xd=v_cmd, wait=False, a=1.0)
+                ft_tmp = ft_base.tolist()
+                ft_record = [i for item in ft_tmp for i in item]
+                self.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data2/imp_ft_fql5.csv', ft_record)
+
 
 if __name__ == "__main__":
+    time.sleep(5)
     controller = ImpedanceController()
     controller.move2initpose()
     controller.set_pose_noise()
@@ -510,20 +588,18 @@ if __name__ == "__main__":
     # controller.robot.stopl()
     # controller.robot.close()
     # print('success')
-    for i in range(1, 2):
-        controller.move2initpose()
-        controller.set_pose_noise()
-        # controller.correct_bias()
-        z = 0
-        while z < 0.036:
-            ft_base = controller.get_ftbase()
-            controller.imp_run(ft_base)
-            z, dz = controller.get_zdz()
+
+    # controller.move2initpose()
+    # controller.set_pose_noise()
+    controller.search_hole()
+    z = 0
+    while z < 0.04:
+        ft_base = controller.get_ftbase()
+        controller.imp_run(ft_base)
+        z, dz = controller.get_zdz()
     #         controller.save2csv('/home/zp/github/RL_PEG_IN_HOLE/data/zdzexp.csv', [z, dz])
     # controller.comptest()
 
     controller.robot.stopl()
     controller.robot.close()
     print('success')
-
-# controller.comptest()
